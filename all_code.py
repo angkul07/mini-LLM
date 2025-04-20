@@ -178,14 +178,21 @@ class GPTModel(nn.Module):
         logits = self.out_head(x)
         return logits
     
-# generating text
 def generate_text_simple(model, idx, max_new_tokens, context_size):
     for _ in range(max_new_tokens):
-        idx_cond = idx[:, -context_size:] #  Crops current context if it exceeds the supported context size, e.g., if LLM supports only 5 tokens, and the context size is 10, then only the last 5 tokens are used as context
+        idx_cond = idx[:, -context_size:]  # Trim to context size
+
         with torch.no_grad():
             logits = model(idx_cond)
 
-        logits = logits[:, -1, :] # focus only on the last step. (batch, n_token, vocab_size) -> (batch, vocab_size)
+        # Check for empty logits due to unexpected model output
+        if logits.size(1) == 0:
+            raise ValueError(
+                f"Model returned empty logits. Check model output shape and ensure input context has enough tokens. "
+                f"Input shape: {idx_cond.shape}, logits shape: {logits.shape}"
+            )
+
+        logits = logits[:, -1, :]  # Focus only on the last step
         probas = torch.softmax(logits, dim=-1)
         idx_next = torch.argmax(probas, dim=-1, keepdim=True)
         idx = torch.cat((idx, idx_next), dim=1)
@@ -196,20 +203,20 @@ def generate_text_simple(model, idx, max_new_tokens, context_size):
 if __name__ == "__main__":
 
     GPT_CONFIG_124M = {
-        "vocab_size": 50257,     # Vocabulary size
-        "context_length": 1056,  # Context length
-        "emb_dim": 768,          # Embedding dimension
-        "n_heads": 12,           # Number of attention heads
-        "n_layers": 12,          # Number of layers
-        "drop_rate": 0.1,        # Dropout rate
-        "qkv_bias": False        # Query-Key-Value bias
+        "vocab_size": 150000,   # Vocabulary size
+        "context_length": 256, # Shortened context length (orig: 1024)
+        "emb_dim": 384,        # Embedding dimension
+        "n_heads": 6,         # Number of attention heads
+        "n_layers": 6,        # Number of layers
+        "drop_rate": 0.1,      # Dropout rate
+        "qkv_bias": False      # Query-key-value bias
     }
 
     torch.manual_seed(123)
     model = GPTModel(GPT_CONFIG_124M)
     model.eval()  # disable dropout
 
-    start_context = "Hello, I am"
+    start_context = "ऑनलाइन क्लास में हमेशा अपने पोस्चर"
 
     tokenizer =HindiTokenizer()
     encoded = tokenizer.encode(start_context)
