@@ -203,7 +203,7 @@ def generate_text_simple(model, idx, max_new_tokens, context_size):
 if __name__ == "__main__":
 
     GPT_CONFIG_124M = {
-        "vocab_size": 150000,   # Vocabulary size
+        "vocab_size": 32000,   # Vocabulary size
         "context_length": 256, # Shortened context length (orig: 1024)
         "emb_dim": 384,        # Embedding dimension
         "n_heads": 6,         # Number of attention heads
@@ -239,3 +239,5 @@ if __name__ == "__main__":
     print("\nOutput:", out)
     print("Output length:", len(out[0]))
     print("Output text:", decoded_text)
+
+    
