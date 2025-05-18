@@ -6,3 +6,9 @@ hinglish_32k.vocab
 hinglish_32k.model
 /trash
 hindi_copy.txt
+/combined_dataset
+hindi_gpt_model.pth
+gpt20k_full_model.pt
+gpt20k_model.pt
+config.json
+model.safetensors

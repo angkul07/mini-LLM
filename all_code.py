@@ -2,22 +2,30 @@ from bpe import HindiTokenizer
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+from huggingface_hub import PyTorchModelHubMixin
 
 tokenizer = HindiTokenizer()
 
-# chapter 2
 class hindiDataset:
-    def __init__(self, txt, tokenizer, max_length, stride):
+    def __init__(self, texts, tokenizer, max_length, stride):
         self.input_ids = []
         self.target_ids = []
 
-        token_ids = tokenizer.encode(txt)
+        if isinstance(texts, str):
+            texts = [texts]
 
-        for i in range(0, len(token_ids) - max_length, stride):
-            input_chunk = token_ids[i: i+max_length]
-            target_chunk = token_ids[i+1: i+max_length + 1]
-            self.input_ids.append(torch.tensor(input_chunk))
-            self.target_ids.append(torch.tensor(target_chunk))
+        for text in texts:
+            token_ids = tokenizer.encode(text)
+            
+            # Skip texts shorter than max_length
+            # if len(token_ids) < max_length:
+            #     continue
+                
+            for i in range(0, len(token_ids) - max_length, stride):
+                input_chunk = token_ids[i: i+max_length]
+                target_chunk = token_ids[i+1: i+max_length + 1]
+                self.input_ids.append(torch.tensor(input_chunk))
+                self.target_ids.append(torch.tensor(target_chunk))
 
     def __len__(self):
         return len(self.input_ids)
@@ -25,9 +33,9 @@ class hindiDataset:
     def __getitem__(self, index):
         return self.input_ids[index], self.target_ids[index]
     
-def create_dataloader(txt, batch_size, max_length, stride, shuffle=True, drop_last = True, num_workers=0):
+def create_dataloader(texts, batch_size, max_length, stride, shuffle=True, drop_last = True, num_workers=0):
 
-    dataset = hindiDataset(txt, tokenizer, max_length, stride)
+    dataset = hindiDataset(texts, tokenizer, max_length, stride)
 
     dataloader = DataLoader(
         dataset, batch_size, shuffle, drop_last=drop_last, num_workers=num_workers
@@ -37,7 +45,7 @@ def create_dataloader(txt, batch_size, max_length, stride, shuffle=True, drop_la
 
 # chapter 3
 class MultiHeadAttention(nn.Module):
-    def __init__(self, d_in, d_out, context_length, dropout, num_heads, qkv_bias=False):
+    def __init__(self, d_in, d_out, context_length, dropout, num_heads, qkv_bias=False, flash=False):
         super().__init__()
         assert(d_out%num_heads==0), "d_out must be divisible by num_heads"
 
@@ -68,20 +76,22 @@ class MultiHeadAttention(nn.Module):
         values = values.transpose(1, 2)
         queries = queries.transpose(1, 2)
 
-        attn_scores = queries @ keys.transpose(2, 3)
-        mask_bool = self.mask.bool()[:num_tokens, :num_tokens]
 
-        attn_scores.masked_fill_(mask_bool, -torch.inf)
-
-        attn_weights = torch.softmax(attn_scores/keys.shape[-1]**0.5, dim=-1)
-        attn_weights = self.dropout(attn_weights)
-
-        context_vec = (attn_weights@values).transpose(1,2)
-
-        context_vec = context_vec.contiguous().view(b, num_tokens, self.d_out)
-
-        context_vec = self.out_proj(context_vec)
-        return context_vec
+        if self.flash:
+            context_vec = nn.functional.scaled_dot_product_attention(
+                queries, keys, values, attn_mask=None,dropout_p=self.dropout, is_causal=True
+            )
+            return context_vec
+        else:
+            attn_scores = queries @ keys.transpose(2, 3)
+            mask_bool = self.mask.bool()[:num_tokens, :num_tokens]
+            attn_scores.masked_fill_(mask_bool, -torch.inf)
+            attn_weights = torch.softmax(attn_scores/keys.shape[-1]**0.5, dim=-1)
+            attn_weights = self.dropout(attn_weights)
+            context_vec = (attn_weights@values).transpose(1,2)
+            context_vec = context_vec.contiguous().view(b, num_tokens, self.d_out)
+            context_vec = self.out_proj(context_vec)
+            return context_vec
     
 
 # chapter 4
@@ -150,7 +160,7 @@ class TransformerBlock(nn.Module):
         x = x + shortcut
         return x
     
-class GPTModel(nn.Module):
+class GPTModel(nn.Module, PyTorchModelHubMixin):
     def __init__(self, cfg):
         super().__init__()
         self.tok_emb = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"])
@@ -205,18 +215,19 @@ if __name__ == "__main__":
     GPT_CONFIG_124M = {
         "vocab_size": 32000,   # Vocabulary size
         "context_length": 256, # Shortened context length (orig: 1024)
-        "emb_dim": 384,        # Embedding dimension
-        "n_heads": 6,         # Number of attention heads
-        "n_layers": 6,        # Number of layers
+        "emb_dim": 512,        # Embedding dimension
+        "n_heads": 8,         # Number of attention heads
+        "n_layers": 8,        # Number of layers
         "drop_rate": 0.1,      # Dropout rate
-        "qkv_bias": False      # Query-key-value bias
+        "qkv_bias": False,      # Query-key-value bias
+        "flash": False
     }
 
     torch.manual_seed(123)
     model = GPTModel(GPT_CONFIG_124M)
     model.eval()  # disable dropout
 
-    start_context = "ऑनलाइन क्लास में हमेशा अपने पोस्चर"
+    start_context = "You are a helpful asistant"
 
     tokenizer =HindiTokenizer()
     encoded = tokenizer.encode(start_context)
