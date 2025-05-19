@@ -62,6 +62,6 @@ def text_to_token_ids(text: str, tokenizer: Tokenizer, device: torch.device | st
     return encoded_tensor
 
 def token_ids_to_text(token_ids: torch.Tensor, tokenizer: Tokenizer) -> str:
-    if token_ids.ndim > 1: # Handles batch dimension if present
+    if token_ids.ndim > 1:
         token_ids = token_ids.squeeze(0)
     return tokenizer.decode(token_ids.tolist())

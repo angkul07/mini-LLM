@@ -7,7 +7,7 @@ class Tokenizer:
         if not os.path.exists(model_path):
             raise FileNotFoundError(
                 f"Tokenizer model not found at {model_path}. "
-                "Please train the tokenizer first using train_tokenizer.py."
+                "Train the tokenizer first using train_tokenizer.py."
             )
         self.sp = spm.SentencePieceProcessor()
         self.sp.load(model_path)

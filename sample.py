@@ -1,5 +1,5 @@
 import torch
-from model import GPTModel # Assuming GPTModel is in model.py
+from model import GPTModel
 from tokenizer import Tokenizer
 from preprocess import text_to_token_ids, token_ids_to_text
 import config
@@ -13,12 +13,11 @@ def generate_text(
     device: torch.device | str,
     temperature: float = 1.0, 
     top_k: int | None = None,
-    eos_id: int | None = None
+    eos_id: int | None = None,
+    train_mode: bool = False
 ) -> str:
-    """Generates text using the provided model and tokenizer."""
-    model.eval() # Set model to evaluation mode
+    model.eval()
 
-    # Encode the starting text
     idx = text_to_token_ids(start_text, tokenizer, device)
 
     for _ in range(max_new_tokens):
@@ -26,37 +25,34 @@ def generate_text(
         idx_cond = idx if idx.size(1) <= context_size else idx[:, -context_size:]
         
         with torch.no_grad():
-            logits = model(idx_cond) # (batch, seq_len, vocab_size)
+            logits = model(idx_cond)
         
-        # Get logits for the last token
-        logits = logits[:, -1, :] # (batch, vocab_size)
+        
+        logits = logits[:, -1, :]
 
-        # Apply top-k filtering
         if top_k is not None:
             v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
-            # Ensure v has elements before accessing v[:, -1]
             if v.numel() > 0:
-                 min_val_to_keep = v[:, -1].unsqueeze(-1) # Make it (batch, 1) for broadcasting
+                 min_val_to_keep = v[:, -1].unsqueeze(-1)
                  logits = torch.where(logits < min_val_to_keep, torch.tensor(float("-inf")).to(logits.device), logits)
-            else: # If top_k is 0 or logits are empty for some reason
-                pass # No filtering or handle as error
+            else:
+                pass
 
         # Apply temperature scaling
-        if temperature > 0.0: # temperature == 0 means greedy decoding
+        if temperature > 0.0:
             scaled_logits = logits / temperature
             probs = torch.softmax(scaled_logits, dim=-1)
-            idx_next = torch.multinomial(probs, num_samples=1) # (batch, 1)
+            idx_next = torch.multinomial(probs, num_samples=1)
         else: # Greedy decoding
-            idx_next = torch.argmax(logits, dim=-1, keepdim=True) # (batch, 1)
+            idx_next = torch.argmax(logits, dim=-1, keepdim=True)
 
-        # Check for EOS token
         if eos_id is not None and idx_next.item() == eos_id:
             break
 
-        # Append generated token
         idx = torch.cat((idx, idx_next), dim=1)
 
-    # Decode the generated sequence
+    if train_mode:
+        model.train()
     return token_ids_to_text(idx, tokenizer)
 
 
@@ -68,8 +64,6 @@ if __name__ == "__main__":
     device = torch.device(device_str)
 
     try:
-        # --- Model Loading ---
-        # Option 1: Load from a checkpoint (if saved with model_state_dict)
         checkpoint = torch.load(config.MODEL_SAVE_PATH, map_location=device)
         model_cfg = checkpoint.get('model_config', config.GPT_CONFIG) # Get config from checkpoint or default
         
@@ -80,9 +74,8 @@ if __name__ == "__main__":
         loaded_model.to(device)
         loaded_model.eval()
 
-        tokenizer_instance = Tokenizer() # Loads from config.TOKENIZER_MODEL_FILE
+        tokenizer_instance = Tokenizer()
 
-        # --- Text Generation ---
         start_prompt = "Once upon a time"
         print(f"Starting prompt: '{start_prompt}'")
 

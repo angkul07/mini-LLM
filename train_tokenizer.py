@@ -27,5 +27,4 @@ def train_tokenizer():
         print("You might need to run Datasets.py script first to generate it.")
 
 if __name__ == "__main__":
-    # Before running this, ensure Datasets.py -> prepare_hinmix_sample_file() has been run.
     train_tokenizer()

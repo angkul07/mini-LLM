@@ -4,10 +4,12 @@ import math
 from tqdm import tqdm
 from datasets import load_from_disk, DatasetDict
 
+from sample import generate_text
 from model import GPTModel
-from preprocess import create_dataloader, text_to_token_ids, token_ids_to_text
+from preprocess import create_dataloader
 from tokenizer import Tokenizer
-import config # Import shared configurations
+from plot import plot_losses
+import config
 
 DEVICE = config.DEVICE
 
@@ -15,18 +17,17 @@ def calculate_loss(logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
     """Calculates cross-entropy loss."""
     return torch.nn.functional.cross_entropy(logits.flatten(0, 1), targets.flatten())
 
-@torch.no_grad() # Decorator for functions that don't require gradient tracking
+@torch.no_grad()
 def calculate_average_loss(data_loader: torch.utils.data.DataLoader, model: GPTModel, 
                            device: DEVICE, num_batches: int | None = None) -> float:
     """Calculates average loss over a data loader."""
-    model.eval() # Set model to evaluation mode
+    model.eval()
     total_loss = 0.0
     actual_batches = 0
 
     if len(data_loader) == 0:
-        return float('nan') # Or handle as appropriate
+        return float('nan')
 
-    # Determine number of batches to iterate over
     if num_batches is None:
         batches_to_iterate = len(data_loader)
     else:
@@ -44,53 +45,22 @@ def calculate_average_loss(data_loader: torch.utils.data.DataLoader, model: GPTM
         total_loss += loss.item()
         actual_batches += 1
     
-    model.train() # Set model back to training mode
+    model.train()
     return total_loss / actual_batches if actual_batches > 0 else float('nan')
 
 
-def generate_sample_text(model: GPTModel, tokenizer: Tokenizer, device: DEVICE, 
-                         start_context: str, max_new_tokens: int) -> str:
-    """Generates a short sample text from the model."""
-    model.eval()
-    context_size = model.cfg["context_length"] # Access from model's stored config
-    
-    input_ids = text_to_token_ids(start_context, tokenizer, device)
-
-    generated_ids = input_ids
-    for _ in range(max_new_tokens):
-        # Crop context if current sequence is longer than context_size
-        input_cond = generated_ids if generated_ids.size(1) <= context_size else generated_ids[:, -context_size:]
-        
-        with torch.no_grad():
-            logits = model(input_cond)
-        
-        # Focus on the last token's logits
-        logits = logits[:, -1, :]
-        probabilities = torch.softmax(logits, dim=-1)
-        next_token_id = torch.argmax(probabilities, dim=-1, keepdim=True)
-        
-        generated_ids = torch.cat((generated_ids, next_token_id), dim=1)
-
-        if next_token_id.item() == tokenizer.eos_id: # Stop if EOS generated
-            break
-            
-    model.train()
-    return token_ids_to_text(generated_ids, tokenizer)
-
 def get_lr(it: int, warmup_steps: int, total_training_steps: int, 
            peak_lr: float, min_lr: float, initial_lr: float) -> float:
-    """Calculates learning rate with warmup and cosine decay."""
     # 1) linear warmup for warmup_iters steps
     if it < warmup_steps:
         return initial_lr + (peak_lr - initial_lr) * (it / warmup_steps)
     # 2) if it > lr_decay_iters, return min learning rate
-    if it >= total_training_steps: # Should ideally be total_training_steps - warmup_steps for cosine part
+    if it >= total_training_steps:
         return min_lr
-    # 3) in between, use cosine decay down to min learning rate
-    # Corrected progress calculation for cosine decay part
+    
     decay_ratio = (it - warmup_steps) / (total_training_steps - warmup_steps)
     assert 0 <= decay_ratio <= 1
-    coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio)) # coeff starts at 1 and goes to 0
+    coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio))
     return min_lr + coeff * (peak_lr - min_lr)
 
 
@@ -98,29 +68,21 @@ def train_model():
     torch.manual_seed(123)
     device = DEVICE
 
-    # --- Tokenizer ---
     try:
-        tokenizer = Tokenizer() # Loads from config.TOKENIZER_MODEL_FILE
-        # Update vocab_size in config if tokenizer's vocab is different (e.g. loaded from existing model)
-        # This assumes config.GPT_CONFIG["vocab_size"] was used for training tokenizer.
+        tokenizer = Tokenizer()
         if config.GPT_CONFIG["vocab_size"] != tokenizer.vocab_size:
             print(f"Warning: Config vocab_size ({config.GPT_CONFIG['vocab_size']}) "
                   f"differs from tokenizer vocab_size ({tokenizer.vocab_size}). "
                   f"Using tokenizer's vocab_size for the model.")
-            # This might be risky if embeddings were pre-trained with a different size.
-            # Best to ensure consistency from the start. For now, let's assume they match
-            # or the user is aware of the implications.
-            # config.GPT_CONFIG["vocab_size"] = tokenizer.vocab_size # If you want to dynamically adjust
+            
     except FileNotFoundError as e:
         print(f"Error: {e}")
         print("Please run train_tokenizer.py first.")
         return
     
-    # --- Model ---
     model = GPTModel(config.GPT_CONFIG).to(device)
     print(f"Model created with {sum(p.numel() for p in model.parameters())/1e6:.2f}M parameters.")
 
-    # --- Dataset and Dataloaders ---
     try:
         combined_hf_dataset = load_from_disk(str(config.COMBINED_DATASET_PATH))
     except FileNotFoundError:
@@ -128,12 +90,11 @@ def train_model():
         print("Please run Datasets.py (create_combined_dataset) first.")
         return
 
-    if not isinstance(combined_hf_dataset, DatasetDict): # If not already split
-         # Shuffle before splitting if it's a single Dataset
+    if not isinstance(combined_hf_dataset, DatasetDict):
         if hasattr(combined_hf_dataset, 'shuffle'):
             combined_hf_dataset = combined_hf_dataset.shuffle(seed=42)
-        split_data = combined_hf_dataset.train_test_split(test_size=0.1, seed=123) # Smaller test for faster iteration
-    else: # Already a DatasetDict
+        split_data = combined_hf_dataset.train_test_split(test_size=0.1, seed=123)
+    else:
         split_data = combined_hf_dataset
 
     train_texts = split_data['train']['text']
@@ -143,8 +104,8 @@ def train_model():
         train_texts, tokenizer,
         batch_size=config.BATCH_SIZE,
         max_length=config.GPT_CONFIG['context_length'],
-        stride=config.GPT_CONFIG['context_length'] // 2, # 50% overlap
-        shuffle=True, drop_last=True, num_workers=2 # Increase num_workers if I/O is bottleneck
+        stride=config.GPT_CONFIG['context_length'] // 2, # 50% overlap: for smaller datasets else stride=config.GPT_CONFIG['context_length']
+        shuffle=True, drop_last=True, num_workers=2
     )
     val_loader = create_dataloader(
         val_texts, tokenizer,
@@ -158,7 +119,6 @@ def train_model():
         print("Error: One or both dataloaders are empty. Check dataset processing.")
         return
 
-    # --- Optimizer and LR Scheduler ---
     optimizer = optim.AdamW(
         model.parameters(), 
         lr=config.LEARNING_RATE, # Peak LR
@@ -174,7 +134,7 @@ def train_model():
     print(f"Initial LR: {initial_lr:.2e}, Peak LR: {config.LEARNING_RATE:.2e}, Min LR: {min_lr:.2e}")
 
 
-    # --- Training Loop ---
+    #Training Loop --->
     train_losses, val_losses, tracked_lrs, tokens_seen_log = [], [], [], []
     global_step = 0
 
@@ -197,7 +157,7 @@ def train_model():
             loss.backward()
             
             # Gradient Clipping (after warmup, or always if preferred)
-            if global_step >= warmup_steps: # Or always: torch.nn.utils.clip_grad_norm_(...)
+            if global_step >= warmup_steps:
                  torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=config.GRAD_CLIP_NORM)
             
             optimizer.step()
@@ -218,17 +178,24 @@ def train_model():
                     "lr": f"{lr:.2e}"
                 })
 
-        # End of Epoch
         print(f"\nEpoch {epoch+1} completed.")
-        avg_epoch_val_loss = calculate_average_loss(val_loader, model, device) # Full validation pass
-        print(f"End of Epoch {epoch+1} Val Loss: {avg_epoch_val_loss:.3f}")
+        avg_epoch_train_loss = calculate_average_loss(train_loader, model, device)
+        avg_epoch_val_loss = calculate_average_loss(val_loader, model, device)
+        print(f"End of Epoch {epoch+1} Train Loss: {avg_epoch_train_loss:.3f} Val Loss: {avg_epoch_val_loss:.3f}")
 
-        sample_output = generate_sample_text(
-            model, tokenizer, device, 
-            start_context="You are a helpful assistant named", 
-            max_new_tokens=config.SAMPLE_MAX_NEW_TOKENS
+        sample_output = generate_text(
+            model=model,
+            tokenizer=tokenizer,
+            start_text="You are a helpful assistant",
+            max_new_tokens=config.SAMPLE_MAX_NEW_TOKENS,
+            context_size=config.GPT_CONFIG["context_length"],
+            device=device,
+            temperature=config.SAMPLE_TEMPERATURE,
+            top_k=config.SAMPLE_TOP_K,
+            eos_id=tokenizer.eos_id,
+            train_mode=True
         )
-        print(f"Sample generation: {sample_output.replace(chr(0), '').replace(chr(25917), '')}") # Clean up potential special chars
+        print(f"Sample generation: {sample_output.replace(chr(0), '').replace(chr(25917), '')}")
 
         # --- Save Checkpoint ---
         checkpoint = {
@@ -240,17 +207,20 @@ def train_model():
             "train_loss": avg_train_loss if train_losses else None,
             "val_loss": avg_epoch_val_loss
         }
-        torch.save(checkpoint, config.MODEL_SAVE_PATH)
-        print(f"Checkpoint saved to {config.MODEL_SAVE_PATH}")
+        torch.save(checkpoint, config.MODEL_CHECKPOINT_SAVE_PATH)
+        print(f"Checkpoint saved to {config.MODEL_CHECKPOINT_SAVE_PATH}")
 
     print("Training complete.")
-    # Optionally, save the final model's weights only for easier deployment/sharing
+    # save the final model's weights only for easier deployment/sharing
     torch.save(model.state_dict(), config.FINAL_MODEL_SAVE_PATH)
     print(f"Final model weights saved to {config.FINAL_MODEL_SAVE_PATH}")
 
-    # (Optional) Plotting losses and LRs can be added here
-    # import matplotlib.pyplot as plt
-    # plt.figure() ... etc.
+    plot_losses(
+    train_losses=train_losses,
+    val_losses=val_losses,
+    tokens_seen_log=tokens_seen_log,
+    save_path="loss_plot.png"
+    )   
 
 if __name__ == "__main__":
     train_model()
