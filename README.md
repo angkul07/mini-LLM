@@ -114,10 +114,10 @@ python sample.py
 #### 1. Download tokenizer and model
 ```bash
 # Download tokenizer
-wget https://huggingface.co/OmAlve/TinyStories-SmolGPT/resolve/main/tok4096.model -P data/
+wget https://huggingface.co/angkul07/MINI-LLM/resolve/main/hinglish_32k.model -P data/
 
 # Download pre-trained checkpoint
-wget https://huggingface.co/OmAlve/TinyStories-SmolGPT/resolve/main/ckpt.pt -P model/
+wget https://huggingface.co/angkul07/MINI-LLM/resolve/main/model_checkpoint.pth -P model/
 ```
 
 #### 2. Run inference
