@@ -1,5 +1,5 @@
-from datasets import load_dataset, Dataset as HFDataset
 import config
+from datasets import load_dataset, Dataset as HFDataset
 
 def prepare_hinmix_sample_file():
     print("Preparing HINMIX sample file for tokenizer...")
@@ -53,8 +53,8 @@ def create_combined_dataset():
         print("Warning: No texts were combined. Combined dataset will be empty.")
         return
 
-    combined_hf_dataset = HFDataset.from_dict({'text': combined_texts})
-    combined_hf_dataset.save_to_disk(str(config.COMBINED_DATASET_PATH))
+    dataset_hf = HFDataset.from_dict({'text': combined_texts})
+    dataset_hf.save_to_disk(str(config.COMBINED_DATASET_PATH))
     print(f"Combined dataset saved to {config.COMBINED_DATASET_PATH}")
 
 if __name__ == "__main__":
