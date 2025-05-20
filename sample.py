@@ -1,8 +1,8 @@
 import torch
+import config
 from model import GPTModel
 from tokenizer import Tokenizer
 from preprocess import text_to_token_ids, token_ids_to_text
-import config
 
 def generate_text(
     model: GPTModel, 
@@ -64,10 +64,10 @@ if __name__ == "__main__":
     device = torch.device(device_str)
 
     try:
-        checkpoint = torch.load(config.MODEL_SAVE_PATH, map_location=device)
-        model_cfg = checkpoint.get('model_config', config.GPT_CONFIG) # Get config from checkpoint or default
+        checkpoint = torch.load(config.MODEL_CHECKPOINT_SAVE_PATH, map_location=device, weights_only=True)
+        model_cfg = checkpoint.get('model_config', config.GPT_CONFIG)
         
-        loaded_model = GPTModel(config.GPT_CONFIG) # Use the config used for training
+        loaded_model = GPTModel(config.GPT_CONFIG)
         loaded_model.load_state_dict(checkpoint['model_state_dict'])
     
 
@@ -94,6 +94,6 @@ if __name__ == "__main__":
         print(generated_output)
 
     except FileNotFoundError as e:
-        print(f"Error: {e}. Ensure model and tokenizer files exist.")
+        print(f"Error: {e}. model and tokenizer files not exist.")
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
