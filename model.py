@@ -1,7 +1,7 @@
+import math
 import torch
 import torch.nn as nn
 from huggingface_hub import PyTorchModelHubMixin
-import math
 
 class MultiHeadAttention(nn.Module):
     def __init__(self, d_in, d_out, context_length, dropout, 
