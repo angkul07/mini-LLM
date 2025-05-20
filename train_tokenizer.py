@@ -2,8 +2,6 @@ import config
 import sentencepiece as spm
 
 def train_tokenizer():
-    """Trains a SentencePiece tokenizer and saves the model."""
-    print(f"Starting tokenizer training using data from: {config.HINMIX_SAMPLE_TXT}")
     try:
         spm.SentencePieceTrainer.train(
             input=config.HINMIX_SAMPLE_TXT,
@@ -23,8 +21,6 @@ def train_tokenizer():
         print(f"Tokenizer model trained and saved with prefix: {config.TOKENIZER_MODEL_PREFIX}")
     except Exception as e:
         print(f"Error during tokenizer training: {e}")
-        print("Please ensure the HINMIX_SAMPLE_TXT file exists and is not empty.")
-        print("You might need to run Datasets.py script first to generate it.")
 
 if __name__ == "__main__":
     train_tokenizer()
