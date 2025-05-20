@@ -1,19 +1,19 @@
 import os
+import math
 import torch
+from tqdm import tqdm
 import torch.optim as optim
 import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel
-import math
-from tqdm import tqdm
 from datasets import load_from_disk, DatasetDict
+from torch.nn.parallel import DistributedDataParallel
 
-from sample import generate_text
-from model import GPTModel
-from preprocess import create_dataloader, TextChunkDataset
-from tokenizer import Tokenizer
-from plot import plot_losses
-from ddp import setup_ddp, init_ddp, ddp_sampler, cleanup, is_main_process
 import config
+from model import GPTModel
+from plot import plot_losses
+from tokenizer import Tokenizer
+from sample import generate_text
+from preprocess import create_dataloader, TextChunkDataset
+from ddp import setup_ddp, init_ddp, ddp_sampler, cleanup, is_main_process
 
 DEVICE = config.DEVICE
 
@@ -101,15 +101,17 @@ def train_model():
     if is_ddp:
         model = DistributedDataParallel(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=False)
 
-    # Dataset Loading -->
-    combined_hf_dataset = load_from_disk(str(config.COMBINED_DATASET_PATH))
+    print(f"Model created with {sum(p.numel() for p in model.parameters())/1e6:.2f}M parameters.")
 
-    if not isinstance(combined_hf_dataset, DatasetDict):
-        if hasattr(combined_hf_dataset, 'shuffle'):
-            combined_hf_dataset = combined_hf_dataset.shuffle(seed=42)
-        split_data = combined_hf_dataset.train_test_split(test_size=0.1, seed=123+local_rank)
+    # Dataset Loading -->
+    dataset_hf = load_from_disk(str(config.DATASET_PATH))
+
+    if not isinstance(dataset_hf, DatasetDict):
+        if hasattr(dataset_hf, 'shuffle'):
+            dataset_hf = dataset_hf.shuffle(seed=42)
+        split_data = dataset_hf.train_test_split(test_size=0.1, seed=123+local_rank)
     else:
-        split_data = combined_hf_dataset
+        split_data = dataset_hf
 
     train_texts = split_data['train']['text']
     val_texts = split_data['test']['text']
@@ -157,7 +159,7 @@ def train_model():
 
     #Training Loop --->
     train_losses, val_losses, tracked_lrs, tokens_seen_log = [], [], [], []
-    global_step = 0
+    tokens_seen, global_step = 0, 0
 
     for epoch in range(config.NUM_EPOCHS):
         model.train()
@@ -186,7 +188,8 @@ def train_model():
             
             optimizer.step()
             
-            tokens_seen_log.append(global_step * config.BATCH_SIZE * config.GPT_CONFIG['context_length'])
+            # tokens_seen_log.append(global_step * config.BATCH_SIZE * config.GPT_CONFIG['context_length'])
+            tokens_seen += input_batch.numel()
             global_step += 1
 
             # Logging and Evaluation
@@ -195,6 +198,7 @@ def train_model():
                 avg_val_loss = calculate_average_loss(val_loader, model, device, num_batches=config.EVAL_ITER, is_ddp=is_ddp, world_size=world_size)
                 train_losses.append(avg_train_loss)
                 val_losses.append(avg_val_loss)
+                tokens_seen_log.append(tokens_seen)
                 
                 epoch_progress.set_postfix({
                     "train_loss": f"{avg_train_loss:.3f}", 
@@ -228,21 +232,19 @@ def train_model():
             "optimizer_state_dict": optimizer.state_dict(),
             "epoch": epoch,
             "global_step": global_step,
-            "config": config.GPT_CONFIG, # Save model config with checkpoint
+            "config": config.GPT_CONFIG,
             "train_loss": avg_train_loss if train_losses else None,
             "val_loss": avg_epoch_val_loss
         }
         torch.save(checkpoint, config.MODEL_CHECKPOINT_SAVE_PATH)
         print(f"Checkpoint saved to {config.MODEL_CHECKPOINT_SAVE_PATH}")
 
-    if is_ddp:
-        # Save the model state dict for DDP
-        torch.save(model.module.state_dict(), config.MODEL_CHECKPOINT_SAVE_PATH)
-        cleanup()
-
     if is_main_process(local_rank):
         print("Training complete.")
-        final_model_state = model.module.state_dict() if is_ddp else model.state_dict()
+        final_model_state = {
+            "model_state_dict": model.module.state_dict() if is_ddp else model.state_dict(),
+            "model_config": config.GPT_CONFIG
+        }
         torch.save(final_model_state, str(config.FINAL_MODEL_SAVE_PATH))
         print(f"Final model weights saved to {config.FINAL_MODEL_SAVE_PATH}")
     
