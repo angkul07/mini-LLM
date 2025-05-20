@@ -38,8 +38,15 @@ pip install -r requirements.txt
 Starting prompt: 'The dragon flew over the mountains'
 
 Generated text:
-The dragon flew over the mountains, and he saw many people in the sea. He was so excited ⁇  He played in the ocean and explored all day long. ⁇ Suddenly, he heard a voice 
-calling out, "Hey ⁇  Joe ⁇  What are you doing here?" ⁇ The dragon looked around and saw a big fish. The fish said, "We are having a race to catch fish ⁇ " ⁇ Joe was embarrassed. He said, "But ⁇ " ⁇ So the dragon said, "Let me show you something ⁇ " So Joe quickly ran to the port and started running around. There were fish, fish and fish and rabbits. Joe stopped rushing and looked at the dragon. He said, "There you are little fish. You are so brave ⁇ " ⁇ The dragon smiled and said, "I have a great race ⁇  Now I can race ⁇ " Joe smiled and said, "Ok, let's race ⁇ " ⁇ Joe was excited and he ran forward. He ran as fast as he could. He crossed the finish line first, and he was laughing. After a while, he crossed the finish line again and he crossed the finish line first before it was time to go home.
+The dragon flew over the mountains, and he saw many people in the sea. He was so excited ⁇  He played in the ocean 
+and explored all day long. ⁇ Suddenly, he heard a voice calling out, "Hey ⁇  Joe ⁇  What are you doing here?" ⁇ 
+The dragon looked around and saw a big fish. The fish said, "We are having a race to catch fish ⁇ " ⁇ Joe was 
+embarrassed. He said, "But ⁇ " ⁇ So the dragon said, "Let me show you something ⁇ " So Joe quickly ran to the
+port and started running around. There were fish, fish and fish and rabbits. Joe stopped rushing and looked 
+at the dragon. He said, "There you are little fish. You are so brave ⁇ " ⁇ The dragon smiled and said, "I 
+have a great race ⁇  Now I can race ⁇ " Joe smiled and said, "Ok, let's race ⁇ " ⁇ Joe was excited and he ran 
+forward. He ran as fast as he could. He crossed the finish line first, and he was laughing. After a while, he 
+crossed the finish line again and he crossed the finish line first before it was time to go home.
 ```
 
 ## Quick Start
