@@ -1,6 +1,7 @@
 import torch
 from torch.utils.data import Dataset as TorchDataset, DataLoader
 from tokenizer import Tokenizer 
+from ddp import prepare
 import config
 
 class TextChunkDataset(TorchDataset):
@@ -52,7 +53,8 @@ def create_dataloader(
         shuffle=shuffle, 
         drop_last=drop_last, 
         num_workers=num_workers,
-        pin_memory=True if torch.cuda.is_available() and config.DEVICE == "cuda" else False
+        pin_memory=True if torch.cuda.is_available() and config.DEVICE == "cuda" else False,
+        sampler=prepare(rank=config.RANK, world_size=config.WORLD_SIZE, batch_size=batch_size, dataset=dataset) if config.DDP else None
     )
     return dataloader
 
