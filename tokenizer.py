@@ -1,6 +1,6 @@
-import sentencepiece as spm
-import config
 import os
+import config
+import sentencepiece as spm
 
 class Tokenizer:
     def __init__(self, model_path: str = str(config.TOKENIZER_MODEL_FILE)):
