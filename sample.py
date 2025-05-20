@@ -8,13 +8,13 @@ def generate_text(
     model: GPTModel, 
     tokenizer: Tokenizer,
     start_text: str, 
-    max_new_tokens: int, 
-    context_size: int, 
+    max_new_tokens, 
+    context_size, 
     device: torch.device | str,
-    temperature: float = 1.0, 
+    temperature = 1.0, 
     top_k: int | None = None,
     eos_id: int | None = None,
-    train_mode: bool = False
+    train_mode = False
 ) -> str:
     model.eval()
 
