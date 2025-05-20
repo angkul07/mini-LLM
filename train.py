@@ -1,5 +1,7 @@
 import torch
 import torch.optim as optim
+import torch.multiprocessing as mp
+from torch.nn.parallel import DistributedDataParallel
 import math
 from tqdm import tqdm
 from datasets import load_from_disk, DatasetDict
@@ -9,8 +11,10 @@ from model import GPTModel
 from preprocess import create_dataloader
 from tokenizer import Tokenizer
 from plot import plot_losses
+from ddp import setup, cleanup
 import config
 
+is_ddp = config.DDP
 DEVICE = config.DEVICE
 
 def calculate_loss(logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
@@ -67,6 +71,7 @@ def get_lr(it: int, warmup_steps: int, total_training_steps: int,
 def train_model():
     torch.manual_seed(123)
     device = DEVICE
+    setup(rank=config.RANK, world_size=config.WORLD_SIZE) if is_ddp else None  
 
     try:
         tokenizer = Tokenizer()
@@ -80,7 +85,11 @@ def train_model():
         print("Please run train_tokenizer.py first.")
         return
     
-    model = GPTModel(config.GPT_CONFIG).to(device)
+    if is_ddp:
+        model = GPTModel(config.GPT_CONFIG).to(config.RANK)
+        model = DistributedDataParallel(model, device_ids=[config.RANK], output_device=config.RANK)
+    else:
+        model = GPTModel(config.GPT_CONFIG).to(device)
     print(f"Model created with {sum(p.numel() for p in model.parameters())/1e6:.2f}M parameters.")
 
     try:
@@ -140,6 +149,9 @@ def train_model():
 
     for epoch in range(config.NUM_EPOCHS):
         model.train()
+
+        if is_ddp:
+            train_loader.sampler.set_epoch(epoch)
         epoch_progress = tqdm(train_loader, desc=f"Epoch {epoch+1}/{config.NUM_EPOCHS}", unit="batch")
         
         for input_batch, target_batch in epoch_progress:
@@ -210,6 +222,11 @@ def train_model():
         torch.save(checkpoint, config.MODEL_CHECKPOINT_SAVE_PATH)
         print(f"Checkpoint saved to {config.MODEL_CHECKPOINT_SAVE_PATH}")
 
+    if is_ddp:
+        # Save the model state dict for DDP
+        torch.save(model.module.state_dict(), config.MODEL_CHECKPOINT_SAVE_PATH)
+        cleanup()
+
     print("Training complete.")
     # save the final model's weights only for easier deployment/sharing
     torch.save(model.state_dict(), config.FINAL_MODEL_SAVE_PATH)
@@ -223,4 +240,7 @@ def train_model():
     )   
 
 if __name__ == "__main__":
-    train_model()
+    if is_ddp:
+        mp.spawn(train_model, nprocs=config.NUM_GPUS, join=True)
+    else:
+        train_model()
