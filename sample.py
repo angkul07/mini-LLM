@@ -76,7 +76,9 @@ if __name__ == "__main__":
 
         tokenizer_instance = Tokenizer()
 
+        # start_prompt = "एक समय की बात है"
         start_prompt = "Once upon a time"
+        # start_prompt = "The dragon flew over the mountains"
         print(f"Starting prompt: '{start_prompt}'")
 
         generated_output = generate_text(
