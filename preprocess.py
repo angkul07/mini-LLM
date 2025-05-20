@@ -1,11 +1,9 @@
 import torch
 from torch.utils.data import Dataset as TorchDataset, DataLoader
-from tokenizer import Tokenizer 
-from ddp import prepare
-import config
+from tokenizer import Tokenizer
 
 class TextChunkDataset(TorchDataset):
-    def __init__(self, texts: list[str] | str, tokenizer: Tokenizer, max_length: int, stride: int):
+    def __init__(self, texts: list[str] | str, tokenizer, max_length, stride):
         self.input_ids = []
         self.target_ids = []
 
@@ -33,28 +31,21 @@ class TextChunkDataset(TorchDataset):
         return self.input_ids[index], self.target_ids[index]
     
 def create_dataloader(
-    texts: list[str] | str, 
-    tokenizer: Tokenizer,
+    dataset,
     batch_size: int, 
-    max_length: int, 
-    stride: int, 
     shuffle: bool = True, 
     drop_last: bool = True, 
-    num_workers: int = 0
+    sampler=None
 ) -> DataLoader:
-
-    dataset = TextChunkDataset(texts, tokenizer, max_length, stride)
-    if len(dataset) == 0:
-        print("Warning: Created an empty dataset. Dataloader will be empty.")
+    
 
     dataloader = DataLoader(
         dataset, 
         batch_size=batch_size, 
-        shuffle=shuffle, 
+        shuffle=(sampler is None and shuffle), 
         drop_last=drop_last, 
-        num_workers=num_workers,
-        pin_memory=True if torch.cuda.is_available() and config.DEVICE == "cuda" else False,
-        sampler=prepare(rank=config.RANK, world_size=config.WORLD_SIZE, batch_size=batch_size, dataset=dataset) if config.DDP else None
+        sampler=sampler,
+        pin_memory=True if torch.cuda.is_available() else False
     )
     return dataloader
 
