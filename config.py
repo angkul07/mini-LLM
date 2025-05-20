@@ -11,21 +11,22 @@ MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
 # File Paths
 HINMIX_SAMPLE_TXT = DATA_DIR / "hinmix_sample.txt"
-COMBINED_DATASET_PATH = DATA_DIR / "combined_dataset_hf" 
+DATASET_PATH = DATA_DIR / "dataset_hf" 
 TOKENIZER_MODEL_PREFIX = MODEL_DIR / "hinglish_32k"
 TOKENIZER_MODEL_FILE = TOKENIZER_MODEL_PREFIX.with_suffix(".model")
 HINDI_DISCOURSE_SCRIPT_PATH = PROJECT_ROOT / "hindi_discourse.py"
 
-MODEL_CHECKPOINT_SAVE_PATH = MODEL_DIR / "gpt_model_checkpoint.pth"
-FINAL_MODEL_SAVE_PATH = MODEL_DIR / "gpt_model_final_weights.pt"
+# Model paths
+MODEL_CHECKPOINT_SAVE_PATH = MODEL_DIR / "model_checkpoint.pth"
+FINAL_MODEL_SAVE_PATH = MODEL_DIR / "final_model_state.pt"
 
-# Dataset Parameters
-HINMIX_LCSALIGN_HICM_TAKE = 7000
+# Dataset Parameters: define the dataset size
+HINMIX_LCSALIGN_HICM_TAKE = 7000    # take first 7000 samples from the dataset
 HINMIX_LCSALIGN_EN_TAKE = 2500
 HINMIX_LCSALIGN_HI_TAKE = 2500
 TINYSTORIES_TAKE = 10000
 
-# Model Configuration (GPT_CONFIG_20M)
+# Model Configuration
 GPT_CONFIG = {
     "vocab_size": 32000,
     "context_length": 128,
@@ -54,6 +55,7 @@ SAMPLE_MAX_NEW_TOKENS = 50
 SAMPLE_TEMPERATURE = 0.8
 SAMPLE_TOP_K = 50
 
+# Special Tokens: change according to your dataset
 USER_DEFINED_SYMBOLS = ['[HI]', '[EN]']
 
 # Device
