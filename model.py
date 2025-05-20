@@ -4,8 +4,8 @@ from huggingface_hub import PyTorchModelHubMixin
 import math
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self, d_in: int, d_out: int, context_length: int, dropout: float, 
-                 num_heads: int, qkv_bias: bool = False, use_flash_attention: bool = False):
+    def __init__(self, d_in, d_out, context_length, dropout, 
+                 num_heads, qkv_bias: False, use_flash_attention: False):
         super().__init__()
         if d_out % num_heads != 0:
             raise ValueError("d_out must be divisible by num_heads")
@@ -72,7 +72,7 @@ class MultiHeadAttention(nn.Module):
         return context_vec
 
 class LayerNorm(nn.Module):
-    def __init__(self, emb_dim: int, eps: float = 1e-5):
+    def __init__(self, emb_dim, eps: float = 1e-5):
         super().__init__()
         self.eps = eps
         self.scale = nn.Parameter(torch.ones(emb_dim))
