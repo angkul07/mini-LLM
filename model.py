@@ -153,7 +153,7 @@ class GPTModel(nn.Module, PyTorchModelHubMixin):
         self.out_head = nn.Linear(cfg["emb_dim"], cfg["vocab_size"], bias=False)
 
         # Weight tying
-        self.tok_emb.weight = self.out_head.weight
+        # self.tok_emb.weight = self.out_head.weight
 
 
     def forward(self, in_idx: torch.Tensor) -> torch.Tensor:
