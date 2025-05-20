@@ -1,3 +1,4 @@
+import os
 import torch
 from pathlib import Path
 
@@ -48,6 +49,16 @@ WARMUP_RATIO = 0.1
 INITIAL_LR_RATIO = 0.03
 MIN_LR_RATIO = 0.001
 GRAD_CLIP_NORM = 1.0
+
+# Distributed Training Parameters
+NUM_GPUS = torch.cuda.device_count()
+DDP = False
+if NUM_GPUS > 1:
+    DDP = True
+    BATCH_SIZE //= NUM_GPUS
+    RANK = int(os.environ["RANK"])
+    WORLD_SIZE = int(os.environ["WORLD_SIZE"])
+    print(f"Using Distributed Data Parallel (DDP) with {NUM_GPUS} GPUs.")
 
 # Sampling Parameters
 SAMPLE_MAX_NEW_TOKENS = 50
