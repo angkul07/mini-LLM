@@ -1,5 +1,5 @@
-import sentencepiece as spm
 import config
+import sentencepiece as spm
 
 def train_tokenizer():
     """Trains a SentencePiece tokenizer and saves the model."""
