@@ -1,6 +1,6 @@
 import torch
-from torch.utils.data import Dataset as TorchDataset, DataLoader
 from tokenizer import Tokenizer
+from torch.utils.data import Dataset as TorchDataset, DataLoader
 
 class TextChunkDataset(TorchDataset):
     def __init__(self, texts: list[str] | str, tokenizer, max_length, stride):
