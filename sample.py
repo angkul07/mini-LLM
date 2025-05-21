@@ -58,9 +58,6 @@ def generate_text(
 
 if __name__ == "__main__":
     device_str = config.DEVICE
-    if device_str == "cuda" and not torch.cuda.is_available():
-        print("CUDA not available, falling back to CPU.")
-        device_str = "cpu"
     device = torch.device(device_str)
 
     try:

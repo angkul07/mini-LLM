@@ -18,13 +18,11 @@ from ddp import setup_ddp, init_ddp, ddp_sampler, cleanup, is_main_process
 DEVICE = config.DEVICE
 
 def calculate_loss(logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-    """Calculates cross-entropy loss."""
     return torch.nn.functional.cross_entropy(logits.flatten(0, 1), targets.flatten())
 
 @torch.no_grad()
 def calculate_average_loss(data_loader: torch.utils.data.DataLoader, model: GPTModel, 
                            device= DEVICE, num_batches: int | None = None, is_ddp=False, world_size=1) -> float:
-    """Calculates average loss over a data loader."""
     model.eval()
     total_loss = 0.0
     actual_batches = 0
@@ -134,6 +132,8 @@ def train_model():
         shuffle=True, drop_last=True,
         sampler=val_sampler
     )
+
+    print(f"train set: {len(train_set)}")
     
     if len(train_loader) == 0 or len(val_loader) == 0 and is_main_process(local_rank):
         print("Error: One or both dataloaders are empty. Check dataset processing.")

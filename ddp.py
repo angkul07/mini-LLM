@@ -25,7 +25,6 @@ def is_main_process(rank) -> bool:
     return rank == 0
 
 def ddp_sampler(dataset, world_size, rank, shuffle=True, drop_last=False):
-    """Prepare the DataLoader for distributed training."""
     sampler = DistributedSampler(
         dataset,
         num_replicas=world_size,
