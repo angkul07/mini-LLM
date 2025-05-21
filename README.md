@@ -63,9 +63,6 @@ Generated text:
 
 ## Quick Start
 
-This guide walks you through the full training cycle.
-
-
 #### 1. Prepare Dataset
 
 Run the script to download/process the dataset and prepare the tokenizer training file (`hinmix_sample.txt`) and the main training dataset (`dataset_hr`).
