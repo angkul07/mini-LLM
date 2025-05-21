@@ -33,7 +33,8 @@ pip install -r requirements.txt
 - PyTorch 2.0+ (with CUDA recommended for training)
 - Modern GPU (recommended for training)
 
-## Outputs:
+## Outputs
+#### Example 1:
 ```markdown
 Starting prompt: 'The dragon flew over the mountains'
 
@@ -47,6 +48,17 @@ at the dragon. He said, "There you are little fish. You are so brave ⁇ " ⁇ T
 have a great race ⁇  Now I can race ⁇ " Joe smiled and said, "Ok, let's race ⁇ " ⁇ Joe was excited and he ran 
 forward. He ran as fast as he could. He crossed the finish line first, and he was laughing. After a while, he 
 crossed the finish line again and he crossed the finish line first before it was time to go home.
+```
+
+#### Example 2:
+```markdown
+Starting prompt: 'एक बहुत पुराने ज़माने की बात है, एक ऊँचे पहाड़ की चोटी पर'
+
+Generated text:
+एक बहुत पुराने ज़माने की बात है, एक ऊँचे पहाड़ की चोटी पर लाजवंती के जाने-पहचाने जिस्म के सारे तेंदूला मुंह में उसका बेबाक निडर भोला भाला दिल मुर्दा 
+और न महसूस करते हुए और आँख और कान न रखते हुए भी मैंने पंजाब की मौत देखी देखी की मौत देखी कर दिया-' नहीं तो पंडिताइन चाची जैसी नई अम्मा 
+पालकी में बैठकर आ जाएगी और फिर सब मिलकर उनकी तरफ़ मुतवज्जो हो गए जिनके बदन सही ओ सालिम थे, लेकिन दिल ज़ख़्मी ⁇  गली, मोहल्ले मोहल्ले 
+मोहल्ले मैं  ⁇ फिर बसाओ ⁇ 
 ```
 
 ## Quick Start
