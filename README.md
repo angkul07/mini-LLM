@@ -19,11 +19,11 @@ A minimal PyTorch implementation for training your own small LLM from scratch. D
 
 ## Installation 
 
-Clone the repository (assuming it's in a git repo, otherwise just save the files):
+Clone the repository:
 
 ```bash
-# git clone <your-repo-url>
-# cd smol-gpt
+git clone https://github.com/angkul07/mini-LLM
+cd mini-LLM
 pip install -r requirements.txt
 ```
 
@@ -178,7 +178,7 @@ MIN_LR_RATIO = 0.001    # Minimum LR is MIN_LR_RATIO * LEARNING_RATE
 
 ## File structure:
 ```bash
-smol-gpt/
+mini-LLM/
 ├── config.py           - Model & training configuration
 ├── Datasets.py         - Data loading and preparation scripts
 ├── ddp.py              - DDP setup utilities
